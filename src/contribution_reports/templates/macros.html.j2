@@ -1,0 +1,61 @@
+{# Reusable macros for report components. #}
+
+{% macro bar(value, max_val, color) %}
+{%- set pct = ((value / max_val * 100) | round | int) if max_val else 0 -%}
+<div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px"><div style="background:{{ color }};width:{{ pct }}%;min-width:2px;height:14px;border-radius:3px"></div><span style="min-width:24px;text-align:right">{{ value }}</span></div>
+{%- endmacro %}
+
+{% macro photo_btn(label, urls) %}
+{%- if urls -%}
+<button class="photo-btn" data-photos="{{ urls | attr_json }}" data-title="{{ label }}">📷 {{ urls | length }}</button>
+{%- else -%}
+<span class="muted">—</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro badge(n) %}<span class="badge" style="margin-left:6px">{{ n }}</span>{% endmacro %}
+
+{% macro breakdown_table(counts, labels, color, photo_urls=None) %}
+{%- if not counts -%}
+<p><em>No data</em></p>
+{%- else -%}
+{%- set max_val = counts.values() | max -%}
+{%- set show_photos = photo_urls is not none -%}
+<table class="bt"><thead><tr><th>Category</th><th>Count</th>{% if show_photos %}<th class="photo-col">Photos</th>{% endif %}</tr></thead><tbody>
+{%- for k, v in counts.items() -%}
+{%- set label = (labels[k] if (labels and k in labels) else k.replace("_", " ").title()) -%}
+<tr><td>{{ label }}</td><td>{{ bar(v, max_val, color) }}</td>{% if show_photos %}<td class="photo-col">{{ photo_btn(label, photo_urls.get(k, [])) }}</td>{% endif %}</tr>
+{%- endfor -%}
+</tbody></table>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro question_breakdown(q_breakdown) %}
+{%- if not q_breakdown -%}
+<p><em>No matched questions</em></p>
+{%- else -%}
+{%- for etype_block in q_breakdown -%}
+<details>
+  <summary><strong>{{ etype_block.etype }}</strong> <span class="badge">{{ etype_block.total }} answers</span></summary>
+  <table class="bt qt">
+    <thead><tr><th>Question</th><th>Tag</th><th>Times answered</th></tr></thead>
+    <tbody>
+    {%- for q in etype_block.questions -%}
+    <tr class="q-row" data-group="{{ q.group_id }}"><td class="q-title">{{ q.title }}</td><td class="q-tag">{{ q.tag }}</td><td>{{ bar(q.count, etype_block.max_val, "#6f42c1") }}</td></tr>
+    {%- for val in q.answer_values -%}
+    <tr class="q-val-row" data-group="{{ q.group_id }}">
+      {%- if val.display_label -%}
+      <td class="val-choice">{{ val.display_choice }}</td><td class="val-label">{{ val.display_label }}</td>
+      {%- else -%}
+      <td class="val-choice" colspan="2">{{ val.display_choice }}</td>
+      {%- endif -%}
+      <td>{{ bar(val.count, val.val_max, "#20c997") }}</td>
+    </tr>
+    {%- endfor -%}
+    {%- endfor -%}
+    </tbody>
+  </table>
+</details>
+{%- endfor -%}
+{%- endif -%}
+{%- endmacro %}

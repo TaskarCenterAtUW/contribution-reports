@@ -1,0 +1,254 @@
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; font-size: 14px; color: #212529; background: #f8f9fa; padding: 24px; }
+h1 { font-size: 1.6rem; margin-bottom: 4px; }
+.subtitle { color: #6c757d; margin-bottom: 32px; }
+h2 { font-size: 1.15rem; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+h3 { font-size: .9rem; font-weight: 600; margin-bottom: 12px; color: #495057; text-transform: uppercase; letter-spacing: .04em; }
+.badge { font-size: .75rem; font-weight: 500; background: #e9ecef; color: #495057; padding: 2px 8px; border-radius: 12px; }
+.ws-date { font-size: .85rem; font-weight: 400; color: #6c757d; }
+section { margin-bottom: 40px; }
+section + section { border-top: 1px solid #dee2e6; padding-top: 40px; }
+.grid3 { display: flex; gap: 16px; }
+.col { display: flex; flex-direction: column; gap: 16px; flex: 1; min-width: 0; }
+.card { background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; }
+.full-width { grid-column: 1 / -1; }
+.card.full-width { margin-top: 16px; }
+table.bt { width: 100%; border-collapse: collapse; }
+table.bt th { text-align: left; font-size: .75rem; font-weight: 600; color: #6c757d; text-transform: uppercase;
+              padding-bottom: 8px; border-bottom: 1px solid #dee2e6; }
+table.bt td { padding: 5px 0; vertical-align: middle; font-size: .85rem; }
+table.bt td:first-child { width: 40%; padding-right: 8px; color: #495057; }
+table.qt td:first-child { width: 38%; }
+table.qt td.q-tag { width: 28%; font-size: .75rem; color: #6c757d; font-family: monospace; padding-right: 8px; }
+table.qt td:last-child { width: 34%; }
+details { margin-bottom: 12px; }
+details summary { cursor: pointer; padding: 6px 0; font-size: .85rem; list-style: none; display: flex;
+                  align-items: center; gap: 8px; border-bottom: 1px solid #dee2e6; margin-bottom: 4px; }
+details summary::-webkit-details-marker { display: none; }
+details summary::before { content: "▶"; font-size: .7rem; color: #6c757d; transition: transform .15s; }
+details[open] summary::before { transform: rotate(90deg); }
+tr.q-row { cursor: pointer; user-select: none; }
+tr.q-row:hover > td { background: #f8f9fa; }
+tr.q-row td.q-title { padding-left: 18px; position: relative; }
+tr.q-row td.q-title::before { content: "▶"; font-size: .6rem; color: #adb5bd; position: absolute;
+                               left: 0; top: 50%; transform: translateY(-50%); transition: transform .15s; }
+tr.q-row.open td.q-title::before { transform: translateY(-50%) rotate(90deg); }
+tr.q-val-row { display: none; }
+tr.q-val-row.open { display: table-row; }
+tr.q-val-row > td { padding-top: 2px !important; padding-bottom: 2px !important; font-size: .8rem; background: #f8f9fa; }
+td.val-choice { padding-left: 30px !important; color: #495057; }
+td.val-label { font-family: monospace; color: #6c757d; font-size: .75rem; }
+@media (max-width: 640px) {
+  .grid3 { flex-direction: column; }
+  /* We force the question table to reflow into stacked blocks per row when
+     the screen width drops to 640px or less. */
+  table.qt, table.qt thead, table.qt tbody { display: block; width: 100%; }
+  table.qt thead { display: none; }
+  table.qt tbody > tr { display: block; width: 100%; }
+  table.qt tbody > tr > td { display: block !important; width: 100% !important; box-sizing: border-box; }
+  table.qt td.q-tag { display: none !important; }
+  tr.q-val-row td.val-label { display: none !important; }
+  table.qt tbody > tr.q-val-row { display: none !important; }
+  table.qt tbody > tr.q-val-row.open { display: block !important; }
+  tr.q-row { border-bottom: 1px solid #dee2e6; padding: 4px 0; }
+  tr.q-row td.q-title { padding-bottom: 2px; }
+}
+.map-view { height: 320px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 16px;
+            position: relative; z-index: 0; }
+.map-expand-btn { position: absolute; top: 8px; right: 8px; z-index: 1000;
+                  background: rgba(255,255,255,.9); border: 1px solid #dee2e6; border-radius: 4px;
+                  width: 28px; height: 28px; cursor: pointer; font-size: 1rem; line-height: 1;
+                  display: flex; align-items: center; justify-content: center; }
+.map-expand-btn:hover { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.map-expanded { position: fixed !important; inset: 24px !important; height: auto !important;
+                z-index: 300 !important; margin: 0 !important; }
+@media (max-width: 640px) {
+  .map-expanded { inset: 0 !important; border-radius: 0 !important; }
+}
+.map-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 299; }
+.map-backdrop.active { display: block; }
+.map-layer-controls { position: absolute; bottom: 24px; left: 8px; z-index: 1000;
+                      display: flex; gap: 4px; flex-wrap: wrap; max-width: calc(100% - 48px); }
+.map-layer-btn { background: rgba(255,255,255,.92); border: 1px solid #dee2e6; border-radius: 4px;
+                 padding: 3px 8px; cursor: pointer; font-size: .78rem; line-height: 1.4;
+                 box-shadow: 0 1px 3px rgba(0,0,0,.1); transition: opacity .15s, background .15s; }
+.map-layer-btn:hover { background: #fff; box-shadow: 0 1px 5px rgba(0,0,0,.18); }
+.map-layer-btn.off { opacity: 0.42; }
+/* The issues panel contains tables that may require horizontal scrolling. */
+.issues-panel { overflow-x: auto; }
+/* These styles provide the shared base for every full-width data table in
+   the report. */
+table.report-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+table.report-table th { text-align: left; font-size: .75rem; font-weight: 600; color: #6c757d;
+                        text-transform: uppercase; padding-bottom: 6px;
+                        border-bottom: 1px solid #dee2e6; }
+table.report-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid #f1f3f5; vertical-align: top; }
+table.report-table tr:last-child td { border-bottom: none; }
+/* We set the column widths for the issues table below. */
+table.issues-table td:first-child { width: 2rem; color: #adb5bd; padding-right: 4px; }
+table.issues-table td:nth-child(2) { width: 26%; min-width: 120px; }
+table.issues-table td:nth-child(3) { width: 60%; }
+table.issues-table td:nth-last-child(2) { width: 5rem; }
+table.issues-table td:last-child { width: 4.5rem; }
+/* We style block-face references inside issues table chips. */
+.road-name  { font-weight:500; }
+.side-chip  { display:inline-block; font-size:.7rem; font-weight:700; line-height:1;
+              padding:1px 4px; border-radius:3px; vertical-align:middle;
+              font-variant-numeric:tabular-nums; margin:0 2px; }
+.cross-range { color:#6c757d; font-size:.8em; }
+tr.issue-row { cursor:pointer; }
+tr.issue-row:hover td { background:#f8f9fa; }
+.conf-bar { display:inline-block; width:36px; height:6px; background:#e9ecef; border-radius:3px;
+            vertical-align:middle; margin-right:4px; overflow:hidden; }
+.conf-fill { display:block; height:100%; background:#6c757d; border-radius:3px; transition:width .2s; }
+.issues-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.method-info-btn { background:none; border:1px solid #dee2e6; border-radius:4px; padding:3px 10px;
+                   font-size:.75rem; color:#6c757d; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+.method-info-btn:hover { background:#f8f9fa; color:#495057; border-color:#adb5bd; }
+.photo-col { width: 72px; text-align: right; white-space: nowrap; vertical-align: middle; }
+.photo-btn { background: none; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer;
+             font-size: .85rem; color: #0d6efd; transition: background .15s; }
+.photo-btn:hover { background: #e7f0ff; }
+.muted { color: #6c757d; font-size: .85rem; display: inline-block; padding: 2px 6px; }
+.leaflet-popup { opacity: 0.8 !important; transition: opacity .15s; }
+.leaflet-popup:hover { opacity: 1 !important; }
+.leaflet-popup-content-wrapper { padding: 6px !important; }
+.leaflet-popup-content { margin: 6px 8px !important; }
+.popup-pager { display:flex; align-items:center; gap:4px; font-size:.8rem; color:#495057; }
+.popup-pager button { border:none; background:none; cursor:pointer; font-size:1.1rem; line-height:1; padding:0 3px; color:#0d6efd; }
+.popup-pager button:hover { color:#0a58ca; }
+.popup-pager-lbl { font-weight:500; min-width:32px; text-align:center; }
+
+/* These dots share all properties except the background, which we set
+   inline. */
+.score-dot { display:inline-block; border-radius:50%; vertical-align:middle; }
+.score-dot-sm  { width:7px;  height:7px;  margin-right:2px; }
+.score-dot-md  { width:8px;  height:8px;  margin-right:3px; }
+.score-dot-lg  { width:9px;  height:9px;  margin-right:3px; }
+.score-dot-xl  { width:10px; height:10px; margin-right:4px; }
+.score-dot-xxl { width:12px; height:12px; }
+
+/* These styles define the dimension pill badge. */
+.dim-pill { display:inline-block; font-size:.65rem; font-weight:700; background:#e9ecef; color:#495057;
+            border-radius:3px; padding:0 3px; margin-right:2px; line-height:1.6; }
+
+/* This element provides the summary bar at the top of the evidence modal for
+   score chip rows. */
+.score-chip-row { margin-bottom:10px; padding:8px 12px; background:#f8f9fa; border-radius:6px;
+                  display:flex; flex-wrap:wrap; gap:2px; align-items:center; }
+.score-chip { display:inline-flex; align-items:center; gap:4px; margin-right:10px; font-size:.8rem; }
+
+/* This box shows confidence details when we open the evidence modal. */
+.conf-detail { margin-bottom:14px; padding:8px 12px; border:1px solid #dee2e6; border-radius:6px; font-size:.8rem; }
+.conf-detail-bar { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.conf-detail-subs { display:flex; gap:16px; color:#6c757d; }
+
+/* This card displays evidence notes. */
+.note-card { margin-bottom:10px; padding:10px 12px; border:1px solid #dee2e6; border-radius:6px; }
+.note-card-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+
+/* We use the `.inferred-notice` class for warnings about inferred issues
+   when we display the evidence modal or the issue popup. */
+.inferred-notice { margin-bottom:12px; padding:6px 10px; background:#fff3cd; border-radius:4px;
+                   font-size:.8rem; color:#856404; }
+
+/* These styles apply to section headings in evidence and methodology modals. */
+.evidence-head { margin:0 0 8px; font-size:.85rem; font-weight:600; color:#495057;
+                 text-transform:uppercase; letter-spacing:.04em; }
+.modal-body-text { font-size:.87rem; line-height:1.6; color:#212529; }
+.modal-scroll-body { max-height:65vh; overflow-y:auto; }
+.methodology-head { margin:0 0 6px; font-size:.8rem; font-weight:700; text-transform:uppercase;
+                    letter-spacing:.05em; color:#495057; }
+
+/* We use this class for callouts that display methodology examples. */
+.methodology-eg { background:#f8f9fa; border-left:3px solid #adb5bd; padding:8px 12px;
+                  border-radius:0 4px 4px 0; margin:8px 0 14px; font-size:.82rem; color:#495057; }
+.methodology-eg-lbl { font-weight:600; color:#6c757d; text-transform:uppercase;
+                      font-size:.72rem; letter-spacing:.04em; }
+
+/* Evidence and methodology modals use this generic table. It's narrower than
+   `.issues-table`. */
+.modal-table { width:100%; border-collapse:collapse; font-size:.83rem; margin-bottom:8px; }
+.modal-table th { text-align:left; padding-bottom:4px; border-bottom:1px solid #dee2e6;
+                  color:#6c757d; font-size:.75rem; font-weight:600; text-transform:uppercase; }
+.modal-table td { padding:5px 8px 5px 0; border-bottom:1px solid #f1f3f5; word-break:break-word; overflow-wrap:break-word; }
+.modal-table tr:last-child td { border-bottom:none; }
+
+/* We use these classes to arrange the popup layout. */
+.popup-hdr { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.popup-body-sm { font-size:.82rem; min-width:190px; max-width:280px; }
+.popup-body-md { font-size:.82rem; min-width:200px; max-width:340px; }
+
+/* We use this selector for click delegation, though we handle the styling in
+   JS. */
+.evidence-btn { background:none; border:none; padding:0; cursor:pointer; color:#0d6efd;
+                font-size:.75rem; text-decoration:underline; }
+/* The issues table uses this badge to show the evidence count. */
+.evidence-table-btn { cursor:pointer; border:none; }
+
+/* We dim the coverage notice in the issues table header. */
+.dim-coverage-notice { font-size:.78rem; color:#6c757d; margin-bottom:8px; }
+
+/* The `.layer-sep` class draws a bar to separate toggle groups in the map
+   layer. */
+.layer-sep { display:inline-block; width:1px; height:1em; background:#dee2e6;
+             margin:0 2px; vertical-align:middle; align-self:center; }
+
+/* Hotspot panel */
+.hotspots-panel { overflow-x: auto; }
+.hotspot-count-badge { display:inline-block; background:#dc3545; color:#fff; font-size:.75rem;
+                       font-weight:700; border-radius:10px; padding:1px 7px; }
+tr.hotspot-row { cursor:pointer; }
+tr.hotspot-row:hover td { background:#fff5f5; }
+
+/* We set specific column widths for the hotspots table so the Summary column
+   (#4) occupies the remaining space. */
+table.hotspots-table td:nth-child(1) { width:2rem; color:#adb5bd; padding-right:4px; }
+table.hotspots-table td:nth-child(2) { width:80px; white-space:nowrap; }
+table.hotspots-table td:nth-child(3) { width:48px; text-align:center; }
+table.hotspots-table td:nth-child(5) { width:80px; text-align:right; white-space:nowrap; }
+table.hotspots-table td:nth-child(6) { width:72px; text-align:right; white-space:nowrap; }
+
+/* We use `L.divIcon` to render this hotspot beacon as a pulsing red dot. The
+   `box-shadow` animation expands 10 px in screen space without reacting to
+   map zoom. Because `box-shadow` doesn't participate in hit testing, these
+   animations never intercept clicks meant for other map features.
+
+   We set `iconSize` in *util.js* to match only the solid core. This ensures
+   Leaflet's click target includes just the dot instead of the animated ring. */
+@keyframes hotspot-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(220,53,69,0.70); }
+  70%  { box-shadow: 0 0 0 20px rgba(220,53,69,0);   }
+  100% { box-shadow: 0 0 0 20px rgba(220,53,69,0);   }
+}
+.hotspot-core {
+  background: #dc3545;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.85);
+  cursor: pointer;
+  animation: hotspot-pulse 3s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hotspot-core { animation: none; }
+}
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex;
+                 align-items: center; justify-content: center; z-index: 400; }
+.modal-overlay[hidden] { display: none; }
+/* We need to stack the gallery above the evidence modal because the former
+   opens from within the latter. */
+#gallery-modal { z-index: 410; }
+.modal-box { background: #fff; border-radius: 10px; padding: 24px; max-width: 960px; width: 92%;
+             max-height: 85vh; overflow-y: auto; position: relative; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.modal-title { font-size: 1rem; font-weight: 600; }
+.modal-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: #6c757d;
+               line-height: 1; padding: 4px 8px; border-radius: 4px; }
+.modal-close:hover { background: #f0f0f0; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.gallery-grid img { width: 100%; height: 160px; object-fit: cover; border-radius: 6px; cursor: pointer;
+                    border: 2px solid transparent; transition: border-color .15s, opacity .15s; }
+.gallery-grid img:hover { border-color: #0d6efd; opacity: .9; }
+.gallery-empty { color: #6c757d; font-style: italic; }

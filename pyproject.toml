@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "contribution-reports"
+version = "0.1.0"
+description = "Standalone contribution report generation for TDEI Workspaces"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "jinja2>=3.1",
+]
+
+[project.scripts]
+contribution-report = "contribution_reports.cli:main"
+osw-report = "contribution_reports.osw.cli:main"
+report-summary = "contribution_reports.summary:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/contribution_reports"]

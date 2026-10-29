@@ -1,0 +1,74 @@
+[
+  {
+    "slug": "nda_vancouver",
+    "title": "NDA Vancouver Walk/Roll",
+    "use_window": true,
+    "city": "Vancouver, WA",
+    "lat": 45.63,
+    "lon": -122.67
+  },
+  {
+    "slug": "nda_pierce",
+    "title": "NDA Pierce County Walk/Roll",
+    "use_window": true,
+    "city": "Pierce County, WA",
+    "lat": 47.25,
+    "lon": -122.44
+  },
+  {
+    "slug": "nda_sedro_woolley",
+    "title": "NDA Sedro-Woolley Walk/Roll",
+    "use_window": true,
+    "city": "Sedro-Woolley, WA",
+    "lat": 48.51,
+    "lon": -122.24
+  },
+  {
+    "slug": "nda_everett",
+    "title": "NDA Everett Walk/Roll",
+    "use_window": true,
+    "city": "Everett, WA",
+    "lat": 47.98,
+    "lon": -122.2
+  },
+  {
+    "slug": "leavenworth",
+    "title": "Leavenworth Walk/Roll CTANW",
+    "use_window": true,
+    "city": "Leavenworth, WA",
+    "lat": 47.59,
+    "lon": -120.66
+  },
+  {
+    "slug": "hth_renton",
+    "title": "HTH Renton",
+    "use_window": true,
+    "city": "Renton, WA",
+    "lat": 47.48,
+    "lon": -122.2
+  },
+  {
+    "slug": "hth_kirkland",
+    "title": "HTH Kirkland",
+    "use_window": false,
+    "city": "Kirkland, WA",
+    "lat": 47.68,
+    "lon": -122.2
+  },
+  {
+    "slug": "otp_seattle",
+    "title": "OTP Seattle",
+    "use_window": true,
+    "city": "Seattle, WA",
+    "lat": 47.61,
+    "lon": -122.33
+  },
+  {
+    "slug": "otp_redmond",
+    "title": "OTP Redmond",
+    "use_window": false,
+    "city": "Redmond, WA",
+    "lat": 47.67,
+    "lon": -122.12
+  }
+]

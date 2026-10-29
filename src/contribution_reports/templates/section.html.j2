@@ -1,0 +1,244 @@
+{%- from "macros.html.j2" import bar, photo_btn, badge, breakdown_table, question_breakdown -%}
+{%- set quest_total = stats.quest.values() | sum -%}
+{%- set created_total = (created.values() | sum) if created else 0 -%}
+{%- set contributor_count = stats.users | length -%}
+{%- set has_team = stats.team | length > 0 -%}
+
+{#- Determine which dimension columns to show.
+    dim_coverage is a list of {key, label, covered, tags} dicts.
+    Default to showing all (covered=True) when absent (old caches). #}
+{%- set show_trav = true -%}
+{%- set show_conn = true -%}
+{%- set show_safety = true -%}
+{%- if dim_coverage -%}
+  {%- for d in dim_coverage -%}
+    {%- if d.key == 'traversability' and not d.covered -%}{%- set show_trav = false -%}{%- endif -%}
+    {%- if d.key == 'connectivity'   and not d.covered -%}{%- set show_conn = false -%}{%- endif -%}
+    {%- if d.key == 'safety_comfort' and not d.covered -%}{%- set show_safety = false -%}{%- endif -%}
+  {%- endfor -%}
+{%- endif -%}
+
+<section>
+  <h2>{{ title }}{% if formatted_date %} <span class="ws-date">{{ formatted_date }}</span>{% endif %} <span class="badge">{{ stats.total }} changesets</span> <span class="badge">{{ notes_count }} notes</span></h2>
+  {% if all_map_data or all_issues_data or all_hotspots_data %}<div class="map-view" data-markers="{{ all_map_data | attr_json }}"{% if all_issues_data %} data-issues="{{ all_issues_data | attr_json }}"{% endif %}{% if all_hotspots_data %} data-hotspots="{{ all_hotspots_data | attr_json }}"{% endif %}></div>{% endif %}
+  <div class="grid3">
+    <div class="col">
+      <div class="card">
+        <h3>Quest Types {{ badge(quest_total) }}</h3>
+        {{ breakdown_table(stats.quest, none, '#0d6efd', stats.quest_photo_urls) }}
+      </div>
+      <div class="card">
+        <h3>Features Created {{ badge(created_total) }}</h3>
+        {{ breakdown_table(created or {}, none, '#fd7e14') }}
+      </div>
+    </div>
+    <div class="col">
+      {% if has_team %}
+      <div class="card">
+        <h3>Team Selection</h3>
+        {{ breakdown_table(stats.team, team_labels, '#198754', stats.team_photo_urls) }}
+      </div>
+      {% endif %}
+      <div class="card">
+        <h3>Contributors {{ badge(contributor_count) }}</h3>
+        {{ breakdown_table(stats.users, none, '#dc3545', stats.user_photo_urls) }}
+      </div>
+    </div>
+  </div>
+  {% if q_breakdown %}
+  <div class="card full-width" style="margin-top:16px">
+    {%- set total_answers = q_breakdown | map(attribute='total') | sum -%}
+    <h3>Questions Answered <span class="badge" style="margin-left:6px">{{ total_answers }} total</span></h3>
+    {{ question_breakdown(q_breakdown) }}
+  </div>
+  {% endif %}
+  {%- if has_issues %}
+  {%- macro issues_table(rows, sign) %}
+    {#- Coverage notices for uncovered dimensions -#}
+    {%- if dim_coverage %}
+    {%- for d in dim_coverage %}
+    {%- if not d.covered %}
+    <p class="dim-coverage-notice">
+      <span class="score-dot score-dot-sm" style="background:#adb5bd;margin-right:4px"></span>
+      <strong>{{ d.label }} not assessed</strong> — this survey's quest definition includes no {{ d.label | lower }} questions.
+    </p>
+    {%- endif %}
+    {%- endfor %}
+    {%- endif %}
+    <table class="report-table issues-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Location</th>
+          <th>Summary</th>
+          {%- if show_trav %}<th style="text-align:right;white-space:nowrap" title="Traversability score">Trav</th>{% endif %}
+          {%- if show_conn %}<th style="text-align:right;white-space:nowrap" title="Connectivity score">Conn</th>{% endif %}
+          {%- if show_safety %}<th style="text-align:right;white-space:nowrap" title="Safety &amp; Comfort score">Safety</th>{% endif %}
+          <th style="text-align:right">Score</th>
+          <th style="text-align:right;white-space:nowrap">Conf</th>
+        </tr>
+      </thead>
+      <tbody>
+      {%- for issue in rows %}
+      {%- set color = issue.combined_score | diverging_color %}
+      {%- set conf = issue.confidence | default(0) %}
+      {%- set conf_pct = (conf * 100) | int %}
+      {%- set cq = issue.conf_quantity | default(none) %}
+      {%- set ca = issue.conf_agreement | default(none) %}
+      {%- set cc = issue.conf_corroboration | default(none) %}
+      {%- set trav = issue.trav_score | default(none) %}
+      {%- set conn = issue.conn_score | default(none) %}
+      {%- set sfty = issue.safety_score | default(none) %}
+      {%- set is_derived = issue.derived | default(false) %}
+      {%- set ref = issue.seg_ref if issue.seg_ref else none %}
+      <tr class="issue-row" data-issue-uid="{{ issue.seg_uid | default('') }}">
+        <td style="color:#6c757d;font-size:.85em">{{ issue.rank }}</td>
+        <td style="font-size:.85em">
+          {%- if ref and ref.road %}
+          <span class="road-name" title="{{ ref.text }}">{{ ref.road }}</span>
+          {%- if ref.side_letter %}
+          <span class="side-chip"
+                style="background:{{ color }};color:{{ color | text_on_color }}"
+                title="{{ ref.side }} side">{{ ref.side_letter }}</span>
+          {%- endif %}
+          {%- if ref.cross_range %}
+          <span class="cross-range">{{ ref.cross_range }}</span>
+          {%- endif %}
+          {%- else %}
+          {{ issue.segment.label if issue.segment else '—' }}
+          {%- endif %}
+          {%- if is_derived %}
+          <span class="badge" style="background:#fff3cd;color:#856404;border:1px solid #ffc107;margin-left:4px;font-size:.7rem"
+                title="{{ issue.derived_from | default('') }}">inferred</span>
+          {%- endif %}
+        </td>
+        <td>{{ issue.summary or '—' }}
+          {%- if issue.quest_count or issue.note_count %}
+          {%- set ev_data = {
+              'segment_label': (issue.segment.label if issue.segment else ''),
+              'score': issue.combined_score,
+              'trav_score': trav,
+              'conn_score': conn,
+              'safety_score': sfty,
+              'quest_score': issue.quest_score | default(none),
+              'note_score': issue.note_score | default(none),
+              'quest_count': issue.quest_count | default(0),
+              'note_count': issue.note_count | default(0),
+              'confidence': conf if conf else none,
+              'conf_quantity': cq,
+              'conf_agreement': ca,
+              'conf_corroboration': cc,
+              'derived': is_derived,
+              'derived_from': issue.derived_from | default(none),
+              'quest_evidence': issue.quest_evidence | default([]),
+              'note_evidence': issue.note_evidence | default([])
+          } %}
+          <button class="badge evidence-table-btn" data-m="{{ ev_data | attr_json }}">{{ issue.quest_count | default(0) }}Q{% if issue.note_count %} {{ issue.note_count }}N{% endif %}</button>
+          {%- endif %}
+        </td>
+        {%- if show_trav %}
+        <td style="text-align:right;white-space:nowrap;font-size:.8em;font-variant-numeric:tabular-nums">
+          {%- if trav is not none %}
+          <span class="score-dot score-dot-sm" style="background:{{ trav | diverging_color }}"></span>{{ "%.2f" | format(trav) }}
+          {%- else %}<span style="color:#adb5bd">—</span>{% endif %}
+        </td>
+        {%- endif %}
+        {%- if show_conn %}
+        <td style="text-align:right;white-space:nowrap;font-size:.8em;font-variant-numeric:tabular-nums">
+          {%- if conn is not none %}
+          <span class="score-dot score-dot-sm" style="background:{{ conn | diverging_color }}"></span>{{ "%.2f" | format(conn) }}
+          {%- else %}<span style="color:#adb5bd">—</span>{% endif %}
+        </td>
+        {%- endif %}
+        {%- if show_safety %}
+        <td style="text-align:right;white-space:nowrap;font-size:.8em;font-variant-numeric:tabular-nums">
+          {%- if sfty is not none %}
+          <span class="score-dot score-dot-sm" style="background:{{ sfty | diverging_color }}"></span>{{ "%.2f" | format(sfty) }}
+          {%- else %}<span style="color:#adb5bd">—</span>{% endif %}
+        </td>
+        {%- endif %}
+        <td style="text-align:right;white-space:nowrap">
+          <span class="score-dot score-dot-xl" style="background:{{ color }}"></span>
+          <span style="font-size:.85em;font-variant-numeric:tabular-nums">{% if sign == 'good' %}+{% endif %}{{ "%.2f" | format(issue.combined_score) }}</span>
+        </td>
+        <td style="text-align:right;white-space:nowrap;min-width:52px">
+          <span class="conf-bar" title="Confidence: {{ conf_pct }}%&#10;Quantity: {{ (cq * 100) | int if cq is not none else '?' }}%&#10;Agreement: {{ (ca * 100) | int if ca is not none else '?' }}%&#10;Corroboration: {{ (cc * 100) | int if cc is not none else '?' }}%">
+            <span class="conf-fill" style="width:{{ conf_pct }}%"></span>
+          </span>
+          <span style="font-size:.78em;color:#6c757d;font-variant-numeric:tabular-nums">{{ conf_pct }}%</span>
+        </td>
+      </tr>
+      {%- endfor %}
+      </tbody>
+    </table>
+  {%- endmacro %}
+  {%- if problems %}
+  <div class="card full-width issues-panel" style="margin-top:16px">
+    <div class="issues-card-header">
+      <h3 style="margin-bottom:0">&#x26A0; Top Infrastructure Problems <span class="badge" style="margin-left:6px">{{ problems | length }}</span></h3>
+      <button class="method-info-btn">ⓘ Methodology</button>
+    </div>
+    {{ issues_table(problems, 'problem') }}
+  </div>
+  {%- endif %}
+  {%- if good_segments and show_positive %}
+  <div class="card full-width issues-panel" style="margin-top:12px;padding-bottom:20px">
+    <div class="issues-card-header">
+      <h3 style="margin-bottom:0">&#x2705; Surveyed Well <span class="badge" style="margin-left:6px">{{ good_segments | length }}</span></h3>
+      <button class="method-info-btn">ⓘ Methodology</button>
+    </div>
+    {{ issues_table(good_segments, 'good') }}
+  </div>
+  {%- endif %}
+  {%- endif %}
+  {%- if has_hotspots %}
+  <div class="card full-width hotspots-panel" style="margin-top:16px">
+    <div class="issues-card-header">
+      <h3 style="margin-bottom:0">&#x1F6A8; Consensus Problem Hotspots <span class="badge" style="margin-left:6px">{{ hotspots | length }}</span></h3>
+      <span class="muted" style="font-size:.75rem">3 or more reports from 2 or more surveyors within 40&nbsp;m</span>
+    </div>
+    <table class="report-table hotspots-table">
+      <thead>
+        <tr>
+          <th style="width:24px">#</th>
+          <th style="width:80px;white-space:nowrap">Reports</th>
+          <th style="width:48px;text-align:center;white-space:nowrap">Voices</th>
+          <th>Summary</th>
+          <th style="width:80px;text-align:right;white-space:nowrap">Intensity</th>
+          <th style="width:72px;text-align:right;white-space:nowrap">Conf</th>
+        </tr>
+      </thead>
+      <tbody>
+      {%- for h in hotspots %}
+      {%- set conf = h.confidence | default(0) %}
+      {%- set conf_pct = (conf * 100) | int %}
+      {%- set cq = h.conf_quantity | default(none) %}
+      {%- set ca = h.conf_agreement | default(none) %}
+      {%- set cc = h.conf_corroboration | default(none) %}
+      {%- set intensity = h.intensity | default(0) %}
+      <tr class="hotspot-row" data-hotspot-uid="{{ h.hs_uid | default('') }}">
+        <td style="color:#6c757d;font-size:.85em">{{ h.rank }}</td>
+        <td style="font-size:.85em;white-space:nowrap">
+          <span class="hotspot-count-badge">{{ h.count }}</span>
+          {%- if h.quest_count %}<span class="muted" style="font-size:.78rem;margin-left:4px">{{ h.quest_count }}Q</span>{%- endif %}
+          {%- if h.note_count %}<span class="muted" style="font-size:.78rem;margin-left:2px">{{ h.note_count }}N</span>{%- endif %}
+        </td>
+        <td style="font-size:.85em;text-align:center">{{ h.voices }}</td>
+        <td style="word-break:break-word">{{ h.label or '—' }}{% if h.photos %} {{ photo_btn('Hotspot ' ~ h.rank, h.photos) }}{% endif %}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <span class="score-dot score-dot-xl" style="background:{{ intensity | diverging_color }}"></span>
+          <span style="font-size:.85em;font-variant-numeric:tabular-nums">{{ "%.2f" | format(intensity) }}</span>
+        </td>
+        <td style="text-align:right;white-space:nowrap;min-width:52px">
+          <span class="conf-bar" title="Confidence: {{ conf_pct }}%&#10;Quantity: {{ (cq * 100) | int if cq is not none else '?' }}%&#10;Agreement: {{ (ca * 100) | int if ca is not none else '?' }}%&#10;Corroboration: {{ (cc * 100) | int if cc is not none else '?' }}%">
+            <span class="conf-fill" style="width:{{ conf_pct }}%;background:#dc3545"></span>
+          </span>
+          <span style="font-size:.78em;color:#6c757d;font-variant-numeric:tabular-nums">{{ conf_pct }}%</span>
+        </td>
+      </tr>
+      {%- endfor %}
+      </tbody>
+    </table>
+  </div>
+  {%- endif %}
+</section>

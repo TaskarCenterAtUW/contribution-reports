@@ -1,0 +1,254 @@
+{%- from "osw_macros.html.j2" import bar, badge, coverage_row, finding_row, counter_table -%}
+<section>
+  <h2>{{ title }} <span class="badge">{{ ledger.reconciliation.counted }} actions</span> <span class="badge">{{ contributor_count }} contributors</span></h2>
+
+  <p class="provenance-line">
+    {{ provenance_counts.editor | default(0) }} editor changesets
+    &nbsp;·&nbsp; {{ provenance_counts.survey_app | default(0) }} survey-app changesets
+    &nbsp;·&nbsp; {{ provenance_counts.baseline_import | default(0) }} baseline import
+    {%- if not include_baseline %} <em>(excluded)</em>{% endif %}
+    &nbsp;·&nbsp; {{ date_range }}
+  </p>
+
+  {%- if not ledger.reconciliation.ok %}
+  <p class="recon-warning">&#x26A0; <strong>Reconciliation failed</strong> —
+    counted {{ ledger.reconciliation.counted }} actions but the changesets report
+    {{ ledger.reconciliation.expected }}. Some changeset data is missing or incomplete;
+    treat every count below as a lower bound.
+    {%- if ledger.reconciliation.mismatches %}
+    <ul>
+      {%- for m in ledger.reconciliation.mismatches %}
+      <li>changeset {{ m.changeset }}: counted {{ m.counted }}, expected {{ m.expected }}</li>
+      {%- endfor %}
+    </ul>
+    {%- endif %}
+  </p>
+  {%- endif %}
+
+  {%- if adiff_failures %}
+  <p class="recon-warning">&#x26A0; {{ adiff_failures | length }} changeset(s) could not be
+    retrieved and are absent from this report: {{ adiff_failures.keys() | join(', ') }}.</p>
+  {%- endif %}
+
+  {% if ledger.geometry %}<div class="osw-map map-view" data-geometry="{{ ledger.geometry | attr_json }}" data-bbox="{{ bbox | attr_json }}"></div>{% endif %}
+
+  <h3 class="half-heading">What changed &amp; who changed it</h3>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Contributors {{ badge(contributor_count) }}</h3>
+      <table class="bt">
+        <thead><tr><th>Contributor</th><th>Changesets</th><th>Actions</th><th>Active days</th><th>Span</th></tr></thead>
+        <tbody>
+        {%- for user, s in ledger.contributors.items() %}
+          <tr>
+            <td>{{ user }}</td>
+            <td>{{ s.changesets }}</td>
+            <td style="font-variant-numeric:tabular-nums">{{ s.actions }}</td>
+            <td>{{ s.active_days }}</td>
+            <td class="muted" style="font-size:.8em">{% if s.first_edit %}{{ s.first_edit[:10] }} – {{ s.last_edit[:10] }}{% else %}—{% endif %}</td>
+          </tr>
+        {%- endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Nature of modifications</h3>
+      <p class="muted" style="font-size:.8rem;margin-top:0">Geometry-only edits are alignment work; tag edits change what the data says.</p>
+      {{ counter_table(ledger.modify_kinds, '#0d6efd', 'Kind', modify_kind_labels) }}
+    </div>
+  </div>
+
+  {%- if ledger.timeline %}
+  <div class="card full-width">
+    <h3>Activity over time <span class="badge">{{ ledger.timeline | length }} active days</span></h3>
+    {%- set day_totals = [] %}
+    {%- for day, counts in ledger.timeline.items() %}{% set _ = day_totals.append(counts.values() | sum) %}{% endfor %}
+    {%- set peak = day_totals | max %}
+    <div class="timeline">
+      {%- for day, counts in ledger.timeline.items() %}
+      {%- set total = counts.values() | sum %}
+      <div class="timeline-day" title="{{ day }}&#10;created {{ counts.create | default(0) }}&#10;modified {{ counts.modify | default(0) }}&#10;deleted {{ counts.delete | default(0) }}&#10;total {{ total }}">
+        <div class="timeline-stack" style="height:{{ (total / peak * 100) | round | int }}%">
+          <div style="flex:{{ counts.delete | default(0) }};background:#dc3545"></div>
+          <div style="flex:{{ counts.modify | default(0) }};background:#0d6efd"></div>
+          <div style="flex:{{ counts.create | default(0) }};background:#198754"></div>
+        </div>
+      </div>
+      {%- endfor %}
+    </div>
+    <p class="muted" style="font-size:.78rem">
+      <span class="dist-chip" style="background:#198754;color:#fff">created</span>
+      <span class="dist-chip" style="background:#0d6efd;color:#fff">modified</span>
+      <span class="dist-chip" style="background:#dc3545;color:#fff">deleted</span>
+      &nbsp;peak day: {{ peak }} actions
+    </p>
+  </div>
+  {%- endif %}
+
+  <div class="card full-width">
+    <h3>Edits by OSW entity type</h3>
+    <table class="bt">
+      <thead><tr><th>Entity</th><th>Created</th><th>Modified</th><th>Deleted</th></tr></thead>
+      <tbody>
+      {%- for name, counts in ledger.by_entity.items() %}
+        <tr>
+          <td>{{ name }}</td>
+          <td style="font-variant-numeric:tabular-nums">{{ counts.create | default(0) }}</td>
+          <td style="font-variant-numeric:tabular-nums">{{ counts.modify | default(0) }}</td>
+          <td style="font-variant-numeric:tabular-nums">{{ counts.delete | default(0) }}</td>
+        </tr>
+      {%- endfor %}
+      </tbody>
+    </table>
+    <p class="muted" style="font-size:.8rem">
+      Also touched: {{ ledger.buckets.geometry_vertex }} geometry vertices, {{ ledger.buckets.untagged_way }} untagged ways, and {{ ledger.buckets.non_osw_feature }} elements whose tags match no OpenSidewalks entity definition{% if ledger.non_osw_signatures %} — mostly{% for sig, n in ledger.non_osw_signatures.items() %} <code>{{ sig }}</code> &times;{{ n }}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}.
+    </p>
+  </div>
+
+  {%- if ledger.osw_attr_deltas or ledger.other_tag_deltas %}
+  <div class="card full-width">
+    <h3>Attribute changes</h3>
+    <p class="muted" style="font-size:.8rem;margin-top:0">OSW attribute values recorded per
+      entity, below. The tags that identify or classify an entity in the first place — a
+      Sidewalk's <code>highway</code>/<code>footway</code>, a curb's <code>barrier</code>/<code>kerb</code> —
+      are not themselves OSW attributes, so they are counted separately in the secondary
+      group underneath rather than inflating this count.</p>
+    {%- if ledger.osw_attr_deltas %}
+    {%- for entity, attrs in ledger.osw_attr_deltas.items() %}
+    <details open>
+      <summary><strong>{{ entity }}</strong></summary>
+      {%- for attr, counts in attrs.items() %}
+      <p class="delta-line"><span class="attr-name">{{ attr }}</span>
+        {%- if counts.added %}<span class="delta-chip delta-add">+{{ counts.added }}</span>{% endif %}
+        {%- if counts.changed %}<span class="delta-chip delta-chg">~{{ counts.changed }}</span>{% endif %}
+        {%- if counts.removed %}<span class="delta-chip delta-rem">-{{ counts.removed }}</span>{% endif %}
+      </p>
+      {%- endfor %}
+    </details>
+    {%- endfor %}
+    {%- else %}
+    <p class="muted"><em>No OSW-attribute deltas among these changes.</em></p>
+    {%- endif %}
+
+    {%- if ledger.other_tag_deltas %}
+    <details class="secondary-group" style="margin-top:10px">
+      <summary><strong>Other tag changes</strong>
+        <span class="muted" style="font-weight:normal">— defining/classification tags, not OSW attributes</span></summary>
+      {%- for entity, attrs in ledger.other_tag_deltas.items() %}
+      <details>
+        <summary>{{ entity }}</summary>
+        {%- for attr, counts in attrs.items() %}
+        <p class="delta-line"><span class="attr-name">{{ attr }}</span>
+          {%- if counts.added %}<span class="delta-chip delta-add">+{{ counts.added }}</span>{% endif %}
+          {%- if counts.changed %}<span class="delta-chip delta-chg">~{{ counts.changed }}</span>{% endif %}
+          {%- if counts.removed %}<span class="delta-chip delta-rem">-{{ counts.removed }}</span>{% endif %}
+        </p>
+        {%- endfor %}
+      </details>
+      {%- endfor %}
+    </details>
+    {%- endif %}
+  </div>
+  {%- endif %}
+
+  {%- if ledger.value_flips %}
+  <div class="card full-width">
+    <h3>Value corrections</h3>
+    <p class="muted" style="font-size:.8rem;margin-top:0">Values changed from one setting to another — the clearest signal of data being corrected.</p>
+    {%- for attr, flips in ledger.value_flips.items() %}
+    {%- set transitions = flips.items() | list %}
+    <p class="dist-line"><span class="attr-name">{{ attr }}</span><span class="badge" style="margin-left:4px">{{ flips.values() | sum }}</span>
+      {%- for transition, n in transitions[:12] %} <span class="dist-chip">{{ transition }} &times;{{ n }}</span>{% endfor %}
+      {%- if transitions | length > 12 %} <span class="muted" style="font-size:.75rem">+{{ transitions | length - 12 }} more</span>{% endif %}
+    </p>
+    {%- endfor %}
+  </div>
+  {%- endif %}
+
+  {%- if validation.resolved or validation.outstanding %}
+  <div class="card full-width">
+    <h3>Editor validation trail</h3>
+    <div class="grid2">
+      <div>
+        <h4 style="color:#198754">Resolved</h4>
+        {{ counter_table(validation.resolved, '#198754', 'Check') }}
+      </div>
+      <div>
+        <h4 style="color:#fd7e14">Outstanding warnings</h4>
+        {{ counter_table(validation.outstanding, '#fd7e14', 'Check') }}
+      </div>
+    </div>
+  </div>
+  {%- endif %}
+
+  {%- if sources %}
+  <div class="card full-width">
+    <h3>Sources &amp; imagery</h3>
+    {%- for key, values in sources.items() %}
+    <p class="dist-line"><span class="attr-name">{{ key }}</span>
+      {%- for v in values %} <span class="dist-chip">{{ v }}</span>{% endfor %}
+    </p>
+    {%- endfor %}
+  </div>
+  {%- endif %}
+
+  <h3 class="half-heading">Resulting data state</h3>
+
+  <p class="denominator-note">
+    {%- if state.scope == 'dataset' %}
+    Measured over <strong>{{ state.live }} raw elements</strong> — including
+    untagged geometry vertices, not just OSW features — within the
+    <strong>edited extent</strong> (the bounding box spanning these reported
+    changesets), via <code>--full-extract</code>. This is <em>not</em> the
+    whole workspace: anything outside that box is absent from these figures.
+    Findings below are evaluated over this same edited-extent population.
+    {%- else %}
+    Measured over <strong>{{ state.live }} touched-and-live elements</strong>
+    ({{ state.touched }} touched, {{ state.touched - state.live }} left deleted) —
+    <em>not</em> the whole workspace dataset.
+    {%- endif %}
+    Half A above counts actions; this half counts distinct elements in their final state.
+  </p>
+
+  {%- if findings %}
+  <div class="card full-width">
+    <div class="issues-card-header">
+      <h3 style="margin-bottom:0">Findings {{ badge(findings | length) }}</h3>
+      <button class="method-info-btn osw-method-btn">ⓘ Methodology</button>
+    </div>
+    <h4>Conformance — the data disagrees with the OSW schema</h4>
+    <table class="report-table"><tbody>
+    {%- for f in findings if f.family == 'conformance' %}{{ finding_row(f) }}{% endfor %}
+    </tbody></table>
+    <h4>Network — the data is right; what it describes matters</h4>
+    <table class="report-table"><tbody>
+    {%- for f in findings if f.family == 'network' %}{{ finding_row(f) }}{% endfor %}
+    </tbody></table>
+  </div>
+  {%- endif %}
+
+  <div class="card full-width">
+    <h3>OSW attribute completeness</h3>
+    {%- for name, ent in state.entities.items() %}
+    <details>
+      <summary><strong>{{ name }}</strong> <span class="badge">{{ ent.count }}</span>
+        <span class="status-summary">
+          {%- if ent.status_counts.good %}<span class="status-item" title="&ge;90% populated"><span class="score-dot score-dot-sm" style="background:#198754"></span>{{ ent.status_counts.good }}</span>{% endif %}
+          {%- if ent.status_counts.fair %}<span class="status-item" title="40&ndash;89% populated"><span class="score-dot score-dot-sm" style="background:#ffc107"></span>{{ ent.status_counts.fair }}</span>{% endif %}
+          {%- if ent.status_counts.poor %}<span class="status-item" title="&lt;40% populated"><span class="score-dot score-dot-sm" style="background:#dc3545"></span>{{ ent.status_counts.poor }}</span>{% endif %}
+        </span>
+      </summary>
+      <table class="bt qt"><tbody>
+      {%- for attr, cov in ent.coverage.items() %}{{ coverage_row(attr, cov) }}{% endfor %}
+      </tbody></table>
+      {%- for attr, dist in ent.distributions.items() %}
+      <p class="dist-line"><strong>{{ attr }}</strong>:
+        {%- for value, n in dist.items() %} <span class="dist-chip">{{ value }} {{ n }}</span>{% endfor %}
+      </p>
+      {%- endfor %}
+    </details>
+    {%- endfor %}
+  </div>
+</section>

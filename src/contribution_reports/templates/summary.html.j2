@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ report_title }}</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="">
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin=""></script>
+<style>
+{{ css | safe }}
+</style>
+<style>
+/* One-pager layout. The op- prefix avoids collisions with report.css. */
+@page { size: letter landscape; margin: 0.4in; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { background: #f1f3f5; margin: 0; padding: 0;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+.op-poster { width: 1280px; height: 720px; margin: 16px auto; background: #fff;
+  display: grid; grid-template-rows: 56px 104px 1fr 30px; gap: 10px;
+  padding: 18px 22px; box-sizing: border-box;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .15); }
+.op-header { display: flex; align-items: baseline; justify-content: space-between;
+  gap: 24px; }
+.op-header h1 { margin: 0; font-size: 26px; color: #212529; }
+.op-period { font-size: 14px; color: #495057; white-space: nowrap; }
+.op-stats { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.op-card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 10px;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0 16px; }
+.op-stat-value { font-size: 34px; font-weight: 700; line-height: 1.1;
+  color: #1971c2; }
+.op-stat-label { font-size: 11.5px; color: #495057; text-transform: uppercase;
+  letter-spacing: .05em; }
+.op-main { display: grid; grid-template-columns: 5.2fr 4fr 3.4fr; gap: 14px;
+  min-height: 0; }
+.op-panel { display: flex; flex-direction: column; min-height: 0; }
+.op-panel h2 { margin: 0 0 8px; font-size: 15px; color: #343a40; }
+.op-list { list-style: none; margin: 0; padding: 0; }
+.op-row { display: grid; grid-template-columns: 235px 1fr 38px;
+  align-items: center; gap: 8px; margin-bottom: 9px; }
+.op-label { font-size: 12.5px; line-height: 1.2; color: #212529; }
+.op-date { display: block; color: #868e96; font-size: 11px; }
+.op-track { height: 22px; }
+.op-bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; }
+.op-bar-quests { background: #4263eb; }
+.op-bar-notes { background: #f59f00; }
+.op-count { font-size: 11.5px; color: #495057; text-align: right; }
+.op-legend { font-size: 11px; color: #495057; margin-top: 2px; }
+.op-legend-swatch { display: inline-block; width: 10px; height: 10px;
+  border-radius: 2px; margin: 0 4px 0 10px; vertical-align: baseline; }
+.op-mix-row { display: grid; grid-template-columns: 110px 1fr 40px;
+  align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12.5px; }
+.op-mix-track { height: 18px; background: #f1f3f5; border-radius: 4px; }
+.op-mix-fill { height: 100%; border-radius: 4px; }
+.op-mix-count { color: #495057; text-align: right; font-size: 11.5px; }
+#op-map { flex: 1; min-height: 0; border-radius: 10px; background: #e9ecef; }
+.op-map-fallback { display: grid; place-items: center; height: 100%;
+  padding: 20px; color: #868e96; font-size: 12.5px; text-align: center; }
+.op-foot { align-self: end; font-size: 10.5px; color: #868e96; }
+</style>
+</head>
+<body>
+<div class="op-poster">
+  <header class="op-header">
+    <h1>{{ report_title }}</h1>
+    <div class="op-period">{{ date_span }} &middot; {{ totals.events }} events{% if skipped %} ({{ skipped }} cached report(s) unavailable){% endif %}</div>
+  </header>
+  <section class="op-stats">
+    {% for label, value in [("Contributors", totals.contributors),
+                            ("Quests", totals.quests),
+                            ("Answers", totals.questions),
+                            ("Answers PCT", totals.question_ratio_str),
+                            ("Notes", totals.notes),
+                            ("New map features", totals.features),
+                            ("Cities", totals.events)] %}
+    <div class="op-card">
+      <span class="op-stat-value">{{ "{:,}".format(value) if value is number else value }}</span>
+      <span class="op-stat-label">{{ label }}</span>
+    </div>
+    {% endfor %}
+  </section>
+  <section class="op-main">
+    <div class="op-panel">
+      <h2>Contributions by event</h2>
+      <ol class="op-list">
+        {% for row in events %}
+        <li class="op-row">
+          <div class="op-label">{{ row.title }}<span class="op-date">{{ row.city }} &middot; {{ row.date_str }}</span></div>
+          <div class="op-track">
+            <div class="op-bar" style="width: {{ (row.q_pct + row.n_pct) | round(1) }}%" title="{{ row.quests }} quest answers, {{ row.notes }} notes">
+              <div class="op-bar-quests" style="width: {{ (100 * row.quests / row.total) if row.total else 0 }}%"></div>
+              <div class="op-bar-notes" style="width: {{ (100 * row.notes / row.total) if row.total else 0 }}%"></div>
+            </div>
+          </div>
+          <div class="op-count">{{ row.total }}</div>
+        </li>
+        {% endfor %}
+      </ol>
+      <div class="op-legend">Quest answers<span class="op-legend-swatch" style="background: #4263eb"></span>Notes<span class="op-legend-swatch" style="background: #f59f00"></span></div>
+    </div>
+    <div class="op-panel">
+      <h2>Contribution mix by element type</h2>
+      <ol class="op-list">
+        {% for m in element_mix %}
+        <li class="op-mix-row">
+          <div>{{ m.type }}</div>
+          <div class="op-mix-track"><div class="op-mix-fill" style="width: {{ (100 * m.count / element_mix[0].count) | round(1) }}%; background: {{ m.color }};"></div></div>
+          <div class="op-mix-count">{{ m.count }}</div>
+        </li>
+        {% endfor %}
+      </ol>
+      <div class="op-legend">Quest-workflow changesets only; a pure feature-creation changeset counts once, under New map features.</div>
+    </div>
+    <div class="op-panel">
+      <h2>Where it happened</h2>
+      <div id="op-map"></div>
+    </div>
+  </section>
+  <footer class="op-foot">
+    One survey-app changeset counts as one quest answer; notes count as
+    filed. Each event applies the same app filter and event window as its
+    published per-event report.
+  </footer>
+</div>
+<script>
+const EVENTS = {{ events_payload | tojson }};
+(function () {
+  // Popups go through setHTML(), which parses its argument as markup: escape
+  // cache-derived values before concatenating so they can never activate.
+  const esc = (s) => String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const el = document.getElementById('op-map');
+  if (typeof maplibregl === 'undefined') {
+    el.innerHTML = '<div class="op-map-fallback">Map tiles need network access. All figures appear in the charts.</div>';
+    return;
+  }
+  const map = new maplibregl.Map({
+    container: 'op-map',
+    style: 'https://tiles.openfreemap.org/styles/positron',
+    attributionControl: false,
+  });
+  const lons = EVENTS.map(function (e) { return e.lon; });
+  const lats = EVENTS.map(function (e) { return e.lat; });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+  map.on('load', function () {
+    map.addSource('events', { type: 'geojson', data: {
+      type: 'FeatureCollection',
+      features: EVENTS.map(function (e) {
+        return { type: 'Feature', properties: e,
+                 geometry: { type: 'Point', coordinates: [e.lon, e.lat] } };
+      })
+    } });
+    map.addLayer({ id: 'op-bubbles', type: 'circle', source: 'events',
+      paint: { 'circle-radius': ['get', 'r'], 'circle-color': '#4263eb',
+               'circle-opacity': 0.55, 'circle-stroke-color': '#364fc7',
+               'circle-stroke-width': 1.5 } });
+    // fitBounds only takes effect after the style has loaded.
+    if (EVENTS.length) {
+      map.fitBounds([[Math.min.apply(null, lons), Math.min.apply(null, lats)],
+                     [Math.max.apply(null, lons), Math.max.apply(null, lats)]],
+                    { padding: 55 });
+    }
+    map.on('click', 'op-bubbles', function (ev) {
+      const p = ev.features[0].properties;
+      new maplibregl.Popup({ offset: 12 }).setLngLat(ev.lngLat)
+        .setHTML('<b>' + esc(p.title) + '</b><br>' + esc(p.quests) +
+                 ' quest answers, ' + esc(p.notes) + ' notes')
+        .addTo(map);
+    });
+  });
+})();
+</script>
+</body>
+</html>

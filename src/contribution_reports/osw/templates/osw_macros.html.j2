@@ -1,0 +1,50 @@
+{# Reusable macros for the OSW report. #}
+
+{% macro bar(value, max_val, color) %}
+{%- set pct = ((value / max_val * 100) | round | int) if max_val else 0 -%}
+<div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px"><div style="background:{{ color }};width:{{ pct }}%;min-width:2px;height:14px;border-radius:3px"></div><span style="min-width:32px;text-align:right">{{ value }}</span></div>
+{%- endmacro %}
+
+{% macro badge(n) %}<span class="badge" style="margin-left:6px">{{ n }}</span>{% endmacro %}
+
+{% macro coverage_row(attr, cov) %}
+{%- set pct = cov.pct -%}
+{%- set color = {'good': '#198754', 'fair': '#ffc107', 'poor': '#dc3545'}[cov.status] -%}
+<tr>
+  <td class="attr-name">{{ attr }}</td>
+  <td style="white-space:nowrap;font-variant-numeric:tabular-nums;color:#6c757d;font-size:.85em">{{ cov.have }}/{{ cov.total }}</td>
+  <td style="width:60%">{{ bar(pct | round | int, 100, color) }}</td>
+</tr>
+{%- endmacro %}
+
+{% macro finding_row(f) %}
+{%- set sev_color = {'error': '#dc3545', 'warning': '#fd7e14', 'info': '#0d6efd'} -%}
+<tr>
+  <td><span class="sev-chip" style="background:{{ sev_color.get(f.severity, '#6c757d') }}">{{ f.severity }}</span></td>
+  <td><strong>{{ f.title }}</strong><br><span class="muted">{{ f.message }}</span>
+    {%- if f.samples %}
+    <br><span class="finding-samples muted" style="font-size:.75rem">
+      Examples:
+      {%- for s in f.samples[:8] %} <code>{{ s[0] }}/{{ s[1] }}</code>{% if not loop.last %},{% endif %}{% endfor -%}
+      {%- if f.samples | length > 8 %}, &hellip;{% endif %}
+    </span>
+    {%- endif %}
+  </td>
+  <td style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">{{ f.count }}{% if f.total %} / {{ f.total }}{% endif %}</td>
+  <td class="rule-id">{{ f.id }}</td>
+</tr>
+{%- endmacro %}
+
+{% macro counter_table(counts, color, label='Category', labels=none) %}
+{%- if not counts -%}
+<p><em>No data</em></p>
+{%- else -%}
+{%- set max_val = counts.values() | max -%}
+<table class="bt"><thead><tr><th>{{ label }}</th><th>Count</th></tr></thead><tbody>
+{%- for k, v in counts.items() -%}
+{%- set k_label = (labels[k] if (labels and k in labels) else k.replace("_", " ").title()) -%}
+<tr><td>{{ k_label }}</td><td>{{ bar(v, max_val, color) }}</td></tr>
+{%- endfor -%}
+</tbody></table>
+{%- endif -%}
+{%- endmacro %}
